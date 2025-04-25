@@ -1,6 +1,6 @@
 from tokenize import Token
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from typing import Annotated
@@ -11,11 +11,14 @@ from database import SessionLocal
 from models import User
 from passlib.context import CryptContext
 from datetime import timedelta, datetime, timezone
+from fastapi.templating import Jinja2Templates
 
 router = APIRouter(
     prefix="/auth",
     tags=["Authentication"],
 )
+
+templates=Jinja2Templates(directory="templates")
 
 SECRET_KEY = "6kk1c4hjgf1c9qcx2fzskj063lsx5cqzyf1rqs4hocvhsgndu48np9we00ng2uwg"
 ALGORITHM = "HS256"
@@ -71,6 +74,15 @@ async def get_current_user(token: Annotated[str,Depends(oauth2_bearer)]):
         return {'username': username, 'id': user_id, 'user_role': user_role}
     except JWTError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token is invalid")
+
+
+@router.get("/login-page")
+def render_login_page(request: Request):
+    return templates.TemplateResponse("login.html", {"request" : request})
+
+@router.get("/register-page")
+def render_register_page(request: Request):
+    return templates.TemplateResponse("register.html", {"request" : request})
 
 
 
