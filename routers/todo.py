@@ -58,7 +58,7 @@ async def render_add_todo_page(request: Request):
         user=await get_current_user(request.cookies.get('access_token'))
         if user is None:
             redirect_to_login()
-        return templates.TemplateResponse("add-todo.html", {"request": request, "todos": todos, "user":user})
+        return templates.TemplateResponse("add-todo.html", {"request": request, "user":user})
     except:
         return redirect_to_login()
 
