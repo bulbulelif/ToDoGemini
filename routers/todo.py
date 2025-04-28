@@ -11,7 +11,14 @@ from typing import Annotated
 from sqlalchemy.orm import Session
 from routers.auth import get_current_user
 from fastapi.templating import Jinja2Templates
+from dotenv import load_dotenv
+import google.generativeai as genai
+import os
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_core.messages import HumanMessage, AIMessage
 
+import markdown
+from bs4 import BeautifulSoup
 
 router = APIRouter(
     prefix="/todo",
@@ -94,6 +101,7 @@ async def create_todo(user: user_dependency, db:db_dependency, todo_request: Tod
     if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
     todo = Todo(**todo_request.dict(), owner_id=user.get('id'))
+    todo.description = create_todo_with_gemini(todo.description)
     db.add(todo)
     db.commit()
 
@@ -124,3 +132,22 @@ async def delete_todo(user: user_dependency, db:db_dependency, todo_id:int =Path
 
     db.query(Todo).filter(Todo.id == todo_id).filter(Todo.owner_id == user.get('id')).delete()
     db.commit()
+
+
+def markdown_to_text(markdown_string):
+    html = markdown.markdown(markdown_string)
+    soup = BeautifulSoup(html, "html.parser")
+    text = soup.get_text()
+    return text
+
+def create_todo_with_gemini(todo_string:str):
+    load_dotenv()
+    genai.configure(api_key=os.environ.get('GOOGLE_API_KEY'))
+    llm=ChatGoogleGenerativeAI(model="gemini-1.5-flash")
+    response=llm.invoke(
+        [
+            HumanMessage(content="I will provide you a todo item to add my to do list. What I want you to do is create a longer and more comprehensive description of that todo item, my next message will be my todo:"),
+            HumanMessage(content=todo_string),
+        ]
+    )
+    return markdown_to_text(response.content)
